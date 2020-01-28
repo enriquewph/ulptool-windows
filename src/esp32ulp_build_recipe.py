@@ -26,6 +26,7 @@ import hashlib
 import platform
 import argparse
 import subprocess
+import shutil ## added for copying compiler executables
 
 CPREPROCESSOR_FLAGS = []
 
@@ -322,24 +323,44 @@ def gen_lcc_cmd(PATHS, file):
     soc_path     = os.path.join(PATHS['core'], 'tools', 'sdk', 'include', 'soc', 'soc')
     include_path = os.path.join(PATHS['core'], 'tools', 'sdk', 'include', 'soc')
     header_path  = os.path.join(PATHS['ulptool'], 'ulpcc', 'include')
+    sketch_path = os.path.join(PATHS['build'], 'sketch')
     if platform.system() == 'Darwin':
         lcc_path = os.path.join(PATHS['ulptool'], 'ulpcc', 'bin', 'darwin')
     elif platform.system() == 'Linux':
         lcc_path = os.path.join(PATHS['ulptool'], 'ulpcc', 'bin', 'linux')
     elif platform.system() == 'Windows':
-        sys.exit("ulpcc is not supported on Windows")
+        lcc_path = os.path.join(PATHS['ulptool'], 'ulpcc', 'bin', 'windows')
+    
+    if platform.system() == 'Windows':
+        shutil.copy(lcc_path + '/bprint.exe', sketch_path + '/bprint.exe')
+        shutil.copy(lcc_path + '/cpp.exe', sketch_path + '/cpp.exe')
+        shutil.copy(lcc_path + '/rcc.exe', sketch_path + '/rcc.exe')
+        shutil.copy(lcc_path + '/lburg.exe', sketch_path + '/lburg.exe')
+        shutil.copy(lcc_path + '/ops.exe', sketch_path + '/ops.exe')
+        shutil.copy(lcc_path + '/lcc.exe', sketch_path + '/lcc.exe')
+    
     LCC = []
-    LCC.append(lcc_path + '/lcc')
+    if platform.system() == 'Windows':
+        LCC.append(sketch_path + '/lcc')
+    else:
+        LCC.append(lcc_path + '/lcc')
     LCC.append('-I' + soc_path)
     LCC.append('-I' + include_path)
     LCC.append('-I' + header_path)
     LCC.append('-D_ULPCC_')
-    LCC.append('-lccdir=' + lcc_path)
+    if platform.system() != 'Windows':
+        LCC.append('-lccdir=' + lcc_path) ##lccdir gets ignored in windows and prevents the script from continuing.
     LCC.append('-Wf-target=ulp')
     LCC.append('-S')
-    LCC.append(file)
+    if platform.system() == 'Windows':
+        LCC.append(sketch_path + '/' + file)
+    else:
+        LCC.append(file)
     LCC.append("-o")
-    LCC.append(file[:-1] + 's')
+    if platform.system() == 'Windows':
+        LCC.append(sketch_path + '/' + file[:-1] + 's')
+    else:
+        LCC.append(file[:-1] + 's')
     STR_CMD = ' '.join(LCC)
     return STR_CMD, LCC
 
